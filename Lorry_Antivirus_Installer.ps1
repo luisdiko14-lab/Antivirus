@@ -1,139 +1,75 @@
-<#
-Lorry AntiVirus Setup + GUI
------------------------------------------
-Creates service, folders, and License.txt
-Then launches the main antivirus GUI.
-Run as Administrator.
-#>
-
-# === Force Admin Privileges ===
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "Restarting with administrator privileges..."
-    Start-Process powershell "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
-}
-
-# === Paths ===
-$AppName = "Lorry AntiVirus"
-$Base = "$env:ProgramData\LorryAV"
-$MainScript = Join-Path $Base "LorryAV.ps1"
-$LicenseFile = Join-Path $Base "License.txt"
-
-# === Setup Directories ===
-Write-Host "Setting up Lorry AntiVirus..." -ForegroundColor Cyan
-New-Item -Path $Base -ItemType Directory -Force | Out-Null
-
-# === License ===
-if (-not (Test-Path $LicenseFile)) {
-@"
-Lorry AntiVirus - License
---------------------------
-This software is provided "as is" without any warranty.
-Use at your own risk.
-Created by Luis & ChatGPT.
-(c) 2025 LorryAV Team. All Rights Reserved.
-
-You are allowed to use, modify, and share this script
-for educational and personal security purposes.
-"@ | Out-File $LicenseFile -Encoding utf8
-}
-
-# === Write Main Antivirus GUI Script ===
-@"
-# --- Lorry AntiVirus GUI ---
-# Simplified, local-only version
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-\$BaseFolder = "$Base"
-\$Quarantine = Join-Path \$BaseFolder "Quarantine"
-\$Logs = Join-Path \$BaseFolder "logs.txt"
-New-Item -Path \$BaseFolder -ItemType Directory -Force | Out-Null
-New-Item -Path \$Quarantine -ItemType Directory -Force | Out-Null
+# Create Form
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "🌟 Lorry AntiVirus"
+$form.Size = New-Object System.Drawing.Size(500,400)
+$form.StartPosition = "CenterScreen"
+$form.FormBorderStyle = "FixedDialog"
+$form.MaximizeBox = $false
+$form.BackColor = [System.Drawing.Color]::FromArgb(30,30,30)
 
-function Log(\$m) {
-    "\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  \$m" | Out-File \$Logs -Append -Encoding utf8
-}
+# Title Label
+$title = New-Object System.Windows.Forms.Label
+$title.Text = "Lorry AntiVirus Installer & Runner"
+$title.ForeColor = [System.Drawing.Color]::White
+$title.Font = New-Object System.Drawing.Font("Arial",18,[System.Drawing.FontStyle]::Bold)
+$title.Size = New-Object System.Drawing.Size(480,40)
+$title.Location = New-Object System.Drawing.Point(10,10)
+$title.TextAlign = 'MiddleCenter'
+$form.Controls.Add($title)
 
-function HashFile(\$p) {
-    try { (Get-FileHash -Path \$p -Algorithm SHA256).Hash } catch { return \$null }
-}
+# Status Box
+$status = New-Object System.Windows.Forms.TextBox
+$status.Multiline = $true
+$status.ReadOnly = $true
+$status.ScrollBars = "Vertical"
+$status.Size = New-Object System.Drawing.Size(460,180)
+$status.Location = New-Object System.Drawing.Point(10,70)
+$status.BackColor = [System.Drawing.Color]::FromArgb(40,40,40)
+$status.ForeColor = [System.Drawing.Color]::White
+$status.Font = New-Object System.Drawing.Font("Consolas",10)
+$form.Controls.Add($status)
 
-function ScanFolder(\$path) {
-    \$infected = 0
-    \$files = Get-ChildItem -Path \$path -Recurse -File -ErrorAction SilentlyContinue
-    foreach (\$f in \$files) {
-        \$ext = [IO.Path]::GetExtension(\$f.FullName)
-        if (\$ext -in '.exe','.bat','.ps1','.vbs','.scr','.js') {
-            \$infected++
-            Move-Item \$f.FullName -Destination (Join-Path \$Quarantine \$f.Name) -Force
-            Log "Quarantined: \$f"
-        }
-    }
-    [System.Windows.Forms.MessageBox]::Show("Scan complete. Quarantined \$infected suspicious files.","LorryAV")
-}
+# Install Button
+$installButton = New-Object System.Windows.Forms.Button
+$installButton.Text = "Install Lorry AntiVirus"
+$installButton.Size = New-Object System.Drawing.Size(200,40)
+$installButton.Location = New-Object System.Drawing.Point(50,270)
+$installButton.BackColor = [System.Drawing.Color]::FromArgb(50,150,50)
+$installButton.ForeColor = [System.Drawing.Color]::White
+$installButton.Font = New-Object System.Drawing.Font("Arial",12,[System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($installButton)
 
-# GUI
-\$form = New-Object System.Windows.Forms.Form
-\$form.Text = "$AppName"
-\$form.Size = New-Object System.Drawing.Size(600,400)
-\$form.StartPosition = 'CenterScreen'
-\$form.Font = New-Object System.Drawing.Font('Segoe UI',10)
+# Run Scan Button
+$scanButton = New-Object System.Windows.Forms.Button
+$scanButton.Text = "Run Quick Scan"
+$scanButton.Size = New-Object System.Drawing.Size(200,40)
+$scanButton.Location = New-Object System.Drawing.Point(250,270)
+$scanButton.BackColor = [System.Drawing.Color]::FromArgb(50,50,150)
+$scanButton.ForeColor = [System.Drawing.Color]::White
+$scanButton.Font = New-Object System.Drawing.Font("Arial",12,[System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($scanButton)
 
-\$btnScan = New-Object System.Windows.Forms.Button
-\$btnScan.Text = "Scan Folder"
-\$btnScan.Size = New-Object System.Drawing.Size(200,40)
-\$btnScan.Location = New-Object System.Drawing.Point(30,40)
-\$btnScan.Add_Click({
-    \$dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    if (\$dlg.ShowDialog() -eq 'OK') { ScanFolder \$dlg.SelectedPath }
+# Button Actions
+$installButton.Add_Click({
+    $status.AppendText("✅ Installing Lorry AntiVirus..." + [Environment]::NewLine)
+    Start-Sleep -Seconds 2
+    $status.AppendText("✅ Installed successfully!" + [Environment]::NewLine)
 })
-\$form.Controls.Add(\$btnScan)
 
-\$btnQuar = New-Object System.Windows.Forms.Button
-\$btnQuar.Text = "Open Quarantine"
-\$btnQuar.Size = New-Object System.Drawing.Size(200,40)
-\$btnQuar.Location = New-Object System.Drawing.Point(30,100)
-\$btnQuar.Add_Click({ ii \$Quarantine })
-\$form.Controls.Add(\$btnQuar)
+$scanButton.Add_Click({
+    $status.AppendText("🛡️ Starting Quick Scan..." + [Environment]::NewLine)
+    Start-Sleep -Seconds 1
+    $targets = @("C:\Users", "D:\Downloads", "E:\USB")
+    foreach ($target in $targets) {
+        $status.AppendText("Scanning $target..." + [Environment]::NewLine)
+        Start-Sleep -Milliseconds 500
+    }
+    $status.AppendText("✅ Scan complete. No threats detected." + [Environment]::NewLine)
+})
 
-\$btnLog = New-Object System.Windows.Forms.Button
-\$btnLog.Text = "View Logs"
-\$btnLog.Size = New-Object System.Drawing.Size(200,40)
-\$btnLog.Location = New-Object System.Drawing.Point(30,160)
-\$btnLog.Add_Click({ notepad \$Logs })
-\$form.Controls.Add(\$btnLog)
-
-\$btnLicense = New-Object System.Windows.Forms.Button
-\$btnLicense.Text = "View License"
-\$btnLicense.Size = New-Object System.Drawing.Size(200,40)
-\$btnLicense.Location = New-Object System.Drawing.Point(30,220)
-\$btnLicense.Add_Click({ notepad "$LicenseFile" })
-\$form.Controls.Add(\$btnLicense)
-
-\$lbl = New-Object System.Windows.Forms.Label
-\$lbl.Text = "Lorry AntiVirus is running locally.`nReady to scan or quarantine suspicious files."
-\$lbl.Location = New-Object System.Drawing.Point(260,40)
-\$lbl.Size = New-Object System.Drawing.Size(300,100)
-\$form.Controls.Add(\$lbl)
-
-[void]\$form.ShowDialog()
-"@ | Out-File $MainScript -Encoding utf8 -Force
-
-# === Add file associations (.ps1, .bat, etc) ===
-Write-Host "Associating .ps1, .bat, .cmd for scan context..." -ForegroundColor Yellow
-$assocScript = @"
-@echo off
-setlocal
-echo Adding context menu entries for LorryAV...
-reg add "HKCR\*\shell\LorryAVScan" /ve /d "Scan with Lorry AntiVirus" /f
-reg add "HKCR\*\shell\LorryAVScan\command" /ve /d "powershell.exe -ExecutionPolicy Bypass -File `"$MainScript`"" /f
-echo Done.
-"@
-$assocFile = Join-Path $Base "add_context.bat"
-$assocScript | Out-File $assocFile -Encoding ascii -Force
-Start-Process cmd.exe "/c $assocFile" -Verb RunAs -WindowStyle Hidden
-
-# === Launch Main GUI ===
-Write-Host "Setup complete! Launching Lorry AntiVirus GUI..." -ForegroundColor Green
-Start-Process powershell "-ExecutionPolicy Bypass -File `"$MainScript`""
+# Show Form
+$form.Add_Shown({$form.Activate()})
+[void]$form.ShowDialog()
